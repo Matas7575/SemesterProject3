@@ -1,0 +1,27 @@
+syntax = "proto3";
+import "user.proto";
+
+option java_multiple_files = true;
+option java_package = "dk.via.nbnp.databaseserver.protobuf";
+
+service NotificationService{
+  rpc getNotificationsByUser(SearchNotificationDTO) returns (stream Notification);
+  rpc deleteNotificationById(SearchNotificationDTO) returns (Empty);
+  rpc deleteNotificationsByUserId(SearchNotificationDTO) returns (Empty);
+}
+
+message Empty{}
+
+message SearchNotificationDTO{
+  int64 id = 1;
+}
+
+message Notification {
+  int64 id = 1;
+  int64 ownerId = 2;
+  string message = 3;
+  string title = 4;
+  LocalDateTime dateSent = 7;
+  string notificationType = 5;
+  int64 notificationTypeId = 6;
+}

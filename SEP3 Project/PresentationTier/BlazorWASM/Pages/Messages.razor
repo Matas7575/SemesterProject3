@@ -1,0 +1,133 @@
+@page "/Messages"
+@using HttpClients.ClientInterfaces
+@using Microsoft.AspNetCore.Components.Authorization
+@using Domain.Models
+@using System.Security.Claims
+@using System.Text.Json
+@using Domain.DTOs
+@using Message = Domain.Models.Message
+@inject NavigationManager navMgr
+@inject IConversationService ConversationService
+@inject IMessageService MessageService
+@inject IUserService UserService
+
+
+<CascadingAuthenticationState>
+    <AuthorizeView Context="Auth">
+        <Authorized>
+            
+                        
+            @if (_conversations is null)
+                {
+                    <h5 style="color: white">No conversations yet!</h5>
+                }
+            else
+            {
+
+                <div class="container messages-container">
+                    <div class="row">
+                        <div class="col-lg-4 mb-2">
+                            <form class="d-flex">
+                                <input class="form-control" type="search" placeholder="Search" aria-label="Search">
+                                <button class="btn btn-outline-success" type="submit">
+                                    <span class="oi oi-magnifying-glass" aria-hidden="true"></span>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-lg-4 border border-white rounded-start users me-3">
+                            <div class="row">
+                                
+                                
+                        
+                                @foreach (var conversation in _conversations)
+                                {
+                                    string temp = "";
+                                    //string temp = conversation.Item.Name + " ";
+                                    //temp += conversation.Buyer.Id == userId ? conversation.Seller.firstName  + " " + conversation.Seller.lastName : conversation.Buyer.firstName  + " " + conversation.Buyer.lastName;
+                                    if (conversation.Buyer.Id == userId)
+                                    {
+                                        temp = conversation.Item.Name + " " + conversation.Seller.firstName  + " " + conversation.Seller.lastName;
+                                    }
+                                    else
+                                    {
+                                        temp = conversation.Item.Name + " " + conversation.Buyer.firstName  + " " + conversation.Buyer.lastName;
+                                    }
+                                    <Contact Name=@temp ConversationId="@conversation.Id" OnOpenConversation="@HandleOpenConversation"/>
+                                }
+
+
+                            </div>
+                        </div>
+                        <MessageView Conversation="@currentConversation" UserId="@userId" OnMessageSend="@HandleSendMessage"/>
+                    </div>
+                </div>
+            }
+
+        </Authorized>
+        <NotAuthorized>
+                <h3>You are not allowed to edit items without an account!</h3>
+        </NotAuthorized>
+    </AuthorizeView>
+
+</CascadingAuthenticationState>
+
+@code {
+
+    private List<Conversation> _conversations;
+    
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthState { get; set; } = null!;
+
+    Conversation currentConversation;
+
+    private string? name;
+    private int userId;
+    public User itemOwner;
+    public Item item;
+    //private List<Image> images;
+    //private int imageIndex;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState authState = await AuthState;
+        ClaimsPrincipal userClaim = authState.User;
+        name = userClaim.Identity.Name;
+        IEnumerable<User> users = await UserService.GetUsers(name?.Split(' ')[0], name?.Split(' ')[1]);
+        if (users is null && users.Count() != 1)
+            throw new Exception();
+        List<User> user = new List<User>(users);
+        userId = user[0].Id;
+        
+        itemOwner = await UserService.GetUserById(userId);
+
+        _conversations = await ConversationService.GetByUserId(userId);
+        currentConversation = _conversations[0];
+
+        Console.WriteLine(_conversations.Count);
+        Console.WriteLine(currentConversation);
+
+    }
+
+    private async Task HandleOpenConversation(long id)
+    {
+        currentConversation = await ConversationService.GetById((int)id);
+        Console.WriteLine("Conversation changed to " + id);
+        StateHasChanged();
+    }
+
+    private async Task HandleSendMessage(MessageCreationDto dto)
+    {
+        Console.WriteLine("Handle: " + dto.content);
+        Message? message = await MessageService.Create(dto);
+        Console.WriteLine(JsonSerializer.Serialize(message));
+        if (message == null)
+        {
+            throw new Exception("Could not send a message");
+        }
+        currentConversation = await ConversationService.GetById((int)currentConversation.Id);
+    }
+
+
+}

@@ -1,0 +1,150 @@
+﻿@page "/LoginSeeProfile"
+@using BlazorWasm.Services
+@using Domain.DTOs
+@using Domain.Models
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@using HttpClients.ClientInterfaces
+@inject IAuthService authService
+@inject NavigationManager navMgr
+@inject IUserService UserService
+<CascadingAuthenticationState>
+    <AuthorizeView Context="Auth">
+        <NotAuthorized>
+            <div class="form-body">
+                <div class="row">
+                    <div class="form-holder">
+                        <div class="form-content">
+                            <div class="form-items">
+                                <h3>Login</h3>
+                                <p>Fill in the data below.</p>
+                                <EditForm Model="@userLogin" OnValidSubmit="@HandleValidSubmit">
+                                    <DataAnnotationsValidator/>
+                                    <div class="col-md-12 ForInput">
+                                        <InputText class="form-control" type="email" name="email" placeholder="E-mail Address" @bind-Value="userLogin.Email"/>
+                                        <ValidationMessage For="() => userLogin.Email"/>
+                                    </div>
+                                    <div class="col-md-12" ForInput>
+                                        <InputText class="form-control" type="password" name="password" placeholder="Password" @bind-Value="userLogin.Password"/>
+                                        <ValidationMessage For="() => userLogin.Password" class="ForInvalidMessage"/>
+                                    </div>
+                                    <div class="form-button mt-3">
+                                        <button id="submit" type="submit" class="btn btn-primary">Login</button>
+                                    </div>
+                                </EditForm>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </NotAuthorized>
+        <Authorized>
+            <div class="form-body">
+                <div class="row">
+                    <div class="form-holder">
+                        <div class="form-content">
+                            <div class="form-items">
+                                <h3>Hello @name.Split(' ')[0] @name.Split(' ')[1]</h3>
+                                <h3>Edit your profile</h3>
+                                <p>Fill in only the fields that you want to edit.</p>
+                                <EditForm Model="@UserUpdateDto" OnValidSubmit="@UpdateUser">
+                                    <DataAnnotationsValidator/>
+                                    <div class="col-md-12 ForInput">
+                                        <InputText class="form-control ForInput" type="text" placeholder="First name" @bind-Value="UserUpdateDto.FirstName"/>
+                                        <ValidationMessage For="() => UserUpdateDto.FirstName"/>
+                                    </div>
+                                    <div class="col-md-12 ForInput">
+                                        <InputText class="form-control" type="text" placeholder="Last name" @bind-Value="UserUpdateDto.LastName"/>
+                                        <ValidationMessage For="() => UserUpdateDto.LastName"/>
+                                    </div>
+
+                                    <div class="col-md-12 ForInput">
+                                        <InputText class="form-control" placeholder="Email" @bind-Value="UserUpdateDto.Email"/>
+                                        <ValidationMessage For="() => UserUpdateDto.Email"/>
+                                    </div>
+
+                                    <div class="col-md-12 ForInput">
+                                        <InputText class="form-control" type="password" placeholder="Password" @bind-Value="UserUpdateDto.Password"/>
+                                        <ValidationMessage For="() => UserUpdateDto.Password"/>
+                                    </div>
+
+                                    <div class="col-md-12 ForInput">
+                                        <InputText class="form-control" type="text" placeholder="Phone number" @bind-Value="UserUpdateDto.PhoneNumber"/>
+                                        <ValidationMessage For="() => UserUpdateDto.PhoneNumber"/>
+                                    </div>
+
+                                    <div class="col-md-12 mt-3 dropdown">
+                                        <label class="mb-3 mr-1">Gender: </label>
+                                        <InputRadioGroup @bind-Value="UserUpdateDto.Gender">
+                                            <InputRadio Value="true" class="btn-check" id="male" autocomplete="off"/>
+                                            <label class="btn btn-sm btn-outline-secondary" for="male">Male</label>
+
+                                            <InputRadio Value="false" class="btn-check" id="female" autocomplete="off"/>
+                                            <label class="btn btn-sm btn-outline-secondary" for="female">Female</label>
+                                            <ValidationMessage For="() => UserUpdateDto.Gender"/>
+
+                                        </InputRadioGroup>
+                                    </div>
+                                    <div class="form-button mt-3">
+                                        <button id="submit" type="submit" class="btn btn-primary">Submit</button>
+                                        <button @onclick="@Logout" type="submit" class="btn btn-primary">Logout</button>
+                                    </div>
+                                </EditForm>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Authorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+
+@code {
+
+
+    private UserLoginDto userLogin = new();
+    private UserUpdateDto UserUpdateDto = new();
+    private string? name;
+
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthState { get; set; } = null!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState authState = await AuthState;
+        ClaimsPrincipal userClaim = authState.User;
+        name = userClaim.Identity.Name;
+        IEnumerable<User> users = await UserService.GetUsers(name.Split(' ')[0], name.Split(' ')[1]);
+        if (users is null && users.Count() != 1)
+            throw new Exception();
+        List<User> user = new List<User>(users);
+        UserUpdateDto.Id = user[0].Id;
+        UserUpdateDto.Gender = user[0].gender;
+    }
+
+    private async void UpdateUser()
+    {
+        navMgr.NavigateTo("/Marketplace/1");
+        await UserService.UpdateUserAsync(UserUpdateDto);
+    }
+
+    private async void HandleValidSubmit()
+    {
+        try
+        {
+            navMgr.NavigateTo("/Marketplace/1");
+            await authService.LoginAsync(userLogin.Email, userLogin.Password);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+        }
+    }
+
+    public async void Logout()
+    {
+        await authService.LogoutAsync();
+    }
+
+}

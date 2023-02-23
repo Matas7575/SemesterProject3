@@ -1,0 +1,240 @@
+@page "/EditItem/{ItemId:int?}"
+
+@using HttpClients.ClientInterfaces
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Authorization
+@using Domain.DTOs
+@using Domain.Models
+@using System.Security.Claims
+@using Newtonsoft.Json
+@using Syncfusion.Blazor.Navigations
+@using Syncfusion.Blazor.Buttons
+@using JsonSerializer = System.Text.Json.JsonSerializer
+@inject NavigationManager navMgr
+@inject IItemService ItemService
+@inject IUserService UserService
+@inject IImageService ImageService
+
+
+<CascadingAuthenticationState>
+    <AuthorizeView Context="Auth">
+        <Authorized>
+
+            @if (item is null)
+                {
+                    <h5 style="color: white">Loading...</h5>
+                }
+            else
+            {
+                <div class="form-body">
+                    <div class="row">
+                        <div class="form-holder">
+                            <div class="form-content">
+                                <div class="form-items container">
+                                    <h3>Hello @name.Split(' ')[0]</h3>
+                                    <h3>Edit a post</h3>
+                                    
+                                    @if (images.Count > 0)
+                                    {
+                                        <SfCarousel @bind-SelectedIndex="@imageIndex">
+                                            @foreach (var image in images)
+                                            {
+                                                <CarouselItem>
+    
+                                                    <figure class="img-container">
+                                                        <img class="img-fluid d-flex justify-content-center" src="data:@image.contentType;base64,@image.base64data" alt="image of the item" style="height:100%;width:100%;">
+                                                    </figure>
+    
+                                                </CarouselItem>
+                                            }
+                                        </SfCarousel>
+                                        <div class="row">
+                                            <div class="form-button mt-3">
+                                                <button id="delete" onclick="@HandleRemoveImage" class="btn btn-danger">Delete Image</button>
+                                            </div>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <h2>No Images for the item</h2>
+                                    }
+                                    
+                                    <div class="row">
+                                        <div class="form-button mt-3">
+                                            <button id="delete" onclick="@HandleUploadImage" class="btn btn-primary">Upload Images</button>
+                                        </div>
+                                    </div>
+
+
+                                    <EditForm Model="@itemUpdateDto" OnValidSubmit="@HandleValidSubmit">
+                                        <DataAnnotationsValidator/>
+                                        <div class="col-md-12 ForInput">
+                                            <label class="label-white" for="name">Name</label>
+                                            <InputText name="name" class="form-control ForInput" type="text" placeholder="Title" @bind-Value="itemUpdateDto.Name"/>
+                                            <ValidationMessage For="() => itemUpdateDto.Name"/>
+                                        </div>
+                                        <div class="col-md-12 ForInput">
+                                            <label class="label-white" for="description">Description</label>
+                                            <InputTextArea name="description" class="form-control" type="text" placeholder="Description" @bind-Value="itemUpdateDto.Description"/>
+                                            <ValidationMessage For="() => itemUpdateDto.Description"/>
+                                        </div>
+
+                                        <div class="col-md-12 ForInput">
+                                            <label class="label-white" for="price">Price</label>
+                                            <InputNumber name="price" class="form-control" placeholder="Price" @bind-Value="itemUpdateDto.Pricing"/>
+                                            <ValidationMessage For="() => itemUpdateDto.Pricing"/>
+                                        </div>
+
+                                        <div class="col-md-12 ForInput">
+                                            <label class="label-white" for="name">Currency</label>
+                                            <InputText class="form-control" type="text" placeholder="Euro" @bind-Value="itemUpdateDto.Currency"/>
+                                            <ValidationMessage For="() => itemUpdateDto.Currency"/>
+                                        </div>
+
+                                        <div class="col-md-12 mt-3 dropdown">
+                                            <label class="label-white mb-3 mr-1">Category: </label>
+                                            <InputSelect class="btn btn-outline-light dropdown-toggle" @bind-Value="itemUpdateDto.Category">
+                                                <option class="dropdown-item" value="">Select category ...</option>
+                                                <option class="dropdown-item" value="Vehicles">Vehicles</option>
+                                                <option class="dropdown-item" value="Electronics">Electronics</option>
+                                                <option class="dropdown-item" value="Furniture">Furniture</option>
+                                                <option class="dropdown-item" value="Clothes">Clothes</option>
+                                            </InputSelect>
+                                            <ValidationMessage For="() => itemUpdateDto.Category"/>
+                                            
+                                            <br/>
+                                            
+                                            <label class="label-white mb-3 mr-1">Sold</label>
+                                            <SfCheckBox Label="" @bind-Checked="itemUpdateDto.IsSold"></SfCheckBox>
+                                            <ValidationMessage For="() => itemUpdateDto.Category"/>
+
+                                            <div class="row">
+                                                <div class="form-button mt-3">
+                                                    <button id="submit" type="submit" class="btn btn-primary">Submit</button>
+                                                </div>
+                                                <div class="form-button mt-3">
+                                                    <button id="delete" onclick="@HandleRemoveItem" class="btn btn-danger">Delete Item</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </EditForm>
+                                    @* <ImageView Id="@ItemId"/> *@
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+                    
+        </Authorized>
+        <NotAuthorized>
+            <h3>You are not allowed to edit items without an account!</h3>
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+
+
+@code {
+    
+    [Parameter] 
+    public int ItemId { get; set; }
+
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthState { get; set; } = null!;
+
+    private ItemUpdateDto itemUpdateDto;
+    private string? name;
+    private int userId;
+    private Item item;
+    private List<Image> images;
+    private int imageIndex;
+
+    protected override async Task OnInitializedAsync()
+    {
+        imageIndex = 0;
+        
+        AuthenticationState authState = await AuthState;
+        ClaimsPrincipal userClaim = authState.User;
+        name = userClaim.Identity.Name;
+        IEnumerable<User> users = await UserService.GetUsers(name.Split(' ')[0], name.Split(' ')[1]);
+        if (users is null && users.Count() != 1)
+            throw new Exception();
+        List<User> user = new List<User>(users);
+        userId = user[0].Id;
+        
+        item = await ItemService.GetItemById(ItemId);
+        if (item.OwnerId != userId)
+        {
+            throw new UnauthorizedAccessException("The item does not belong to this user!");
+        }
+
+       // imageIndex = 0;
+
+        itemUpdateDto = new ItemUpdateDto(item.Id)
+        {
+            Category = item.Category,
+            Currency = item.Currency,
+            Description = item.Description,
+            IsSold = item.IsSold,
+            Name = item.Name,
+            OwnerId = item.OwnerId,
+            Pricing = item.Pricing
+        };
+
+        images = await ImageService.GetImagesByItemId(item.Id);
+        Console.WriteLine(images.Count);
+    }
+
+    private async void HandleValidSubmit()
+    {
+        Console.WriteLine("Editing item...");
+        try
+        {
+            Item? item = await ItemService.Update(itemUpdateDto);
+            if (item != null)
+            {
+                Console.WriteLine("Edit successful");
+                
+            }
+            navMgr.NavigateTo($"/ViewItem/{ItemId}");
+            
+
+            
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+        }
+    }
+
+    private async void HandleUploadImage()
+    {
+        navMgr.NavigateTo($"/UploadImages/{ItemId}/edit");
+    }
+
+    private async void HandleRemoveImage()
+    {
+        Console.WriteLine("Deleting image...");
+        Image image = images[imageIndex];
+        await ImageService.DeleteImageById((int)image.Id);
+        Console.WriteLine("Delete Successful");
+        images = await ImageService.GetImagesByItemId(item.Id);
+        StateHasChanged();
+    }
+            
+    private async void HandleRemoveItem()
+    {
+        Console.WriteLine("Deleting item...");
+        try
+        {
+            await ItemService.DeleteItemById(ItemId);
+            Console.WriteLine("Delete Successful");
+            navMgr.NavigateTo($"/Marketplace/1");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+        }
+    }
+    
+}

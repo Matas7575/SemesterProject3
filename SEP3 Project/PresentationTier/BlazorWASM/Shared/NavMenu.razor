@@ -1,0 +1,115 @@
+﻿@using Microsoft.AspNetCore.Components.Authorization
+
+<CascadingAuthenticationState>
+<AuthorizeView>
+    <NotAuthorized>
+        <nav class="navbar navbar-expand-lg navbar-light bg-light sticky-lg-top @NavMenuCssClass" @onclick="ToggleNavMenu">
+            <div class="container-fluid">
+                <div class="col-lg-2">
+                    <a class="navbar-brand" href="">
+                        <img class="rounded" src="/images/ChadLogo.png" alt="" width="40" height="40">
+                    </a>
+                    <a class="navbar-brand" href="" @onclick="ToggleNavMenu" style="color: white">ChadList</a>
+                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                </div>
+                <div class="collapse navbar-collapse navbar-nav me-auto mb-2 mb-lg-0 col-lg-10 container-fluid" id="navbarSupportedContent">
+                    <NavLink class="nav-link nav-item col-lg-2" href="/createUser">
+                        <h5>Create User</h5>
+                    </NavLink>
+                    <NavLink class="nav-link nav-item col-2" href="/Marketplace/1">
+                        <h5>Marketplace</h5>
+                    </NavLink>
+                    <NavLink class="nav-link nav-item col-2" href="/messages">
+                        <h5>Messages</h5>
+                    </NavLink>
+                    <NavLink class="nav-link nav-item col-2" href="/aboutUs">
+                        <h5>About us</h5>
+                    </NavLink>
+                    <div class="float-lg-end col-lg-2">
+                        <NavLink class="nav-link nav-item float-end" href="/LoginSeeProfile">
+                            <span class="oi oi-person" aria-hidden="true"></span>
+                        </NavLink>
+                        <NavLink class="nav-link nav-item float-end" href="/Notifications">
+                            <span class="oi oi-bell" aria-hidden="true"></span>
+                        </NavLink>
+                        
+                        <!--@{ var list = new List<string> { "Register", "LogIn" }; }
+                        <Dropdown TItem="string" OnSelected="@OnSelected" >
+                            <InitialTip><span class="oi oi-person" aria-hidden="true"></span></InitialTip>
+                            <ChildContent>
+                                <DropdownListItem Item="@list[0]">Register</DropdownListItem>
+                                <DropdownListItem Item="@list[1]">Log in</DropdownListItem>
+                            </ChildContent>
+                        </Dropdown>-->
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </NotAuthorized>
+    <Authorized>
+         <nav class="navbar navbar-expand-lg navbar-light bg-light sticky-lg-top @NavMenuCssClass" @onclick="ToggleNavMenu">
+                    <div class="container-fluid">
+                        <div class="col-lg-2">
+                            <a class="navbar-brand" href="">
+                                <img class="rounded" src="/images/ChadLogo.png" alt="" width="40" height="40">
+                            </a>
+                            <a class="navbar-brand" href="" @onclick="ToggleNavMenu" style="color: white">ChadList</a>
+                            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                                <span class="navbar-toggler-icon"></span>
+                            </button>
+                        </div>
+                        <div class="collapse navbar-collapse navbar-nav me-auto mb-2 mb-lg-0 col-lg-10 container-fluid" id="navbarSupportedContent">
+                            <NavLink class="nav-link nav-item col-lg-2" href="/createPost">
+                                <h5>Create Item Post</h5>
+                            </NavLink>
+                            <NavLink class="nav-link nav-item col-2" href="/Marketplace/1">
+                                <h5>Marketplace</h5>
+                            </NavLink>
+                            <NavLink class="nav-link nav-item col-2" href="/messages">
+                                <h5>Messages</h5>
+                            </NavLink>
+                            <NavLink class="nav-link nav-item col-2" href="/aboutUs">
+                                <h5>About us</h5>
+                            </NavLink>
+                            <NavLink class="nav-link nav-item col-2" href="/OwnedItems">
+                                <h5>My items</h5>
+                            </NavLink>
+                            <div class="float-lg-end col-lg-2">
+                                <NavLink class="nav-link nav-item float-end" href="/LoginSeeProfile">
+                                    <span class="oi oi-person" aria-hidden="true"></span>
+                                </NavLink>
+                                <NavLink class="nav-link nav-item float-end" href="/notifications">
+                                    <span class="oi oi-bell" aria-hidden="true"></span>
+                                </NavLink>
+                                <!--@{ var list = new List<string> { "Register", "LogIn" }; }
+                                <Dropdown TItem="string" OnSelected="@OnSelected" >
+                                    <InitialTip><span class="oi oi-person" aria-hidden="true"></span></InitialTip>
+                                    <ChildContent>
+                                        <DropdownListItem Item="@list[0]">Register</DropdownListItem>
+                                        <DropdownListItem Item="@list[1]">Log in</DropdownListItem>
+                                    </ChildContent>
+                                </Dropdown>-->
+                            </div>
+                        </div>
+                    </div>
+                </nav>
+    </Authorized>
+</AuthorizeView>
+</CascadingAuthenticationState>
+
+@code {
+    private void OnSelected(string selection)
+    {
+        Console.WriteLine(selection);
+    }
+    private bool collapseNavMenu = true;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+}

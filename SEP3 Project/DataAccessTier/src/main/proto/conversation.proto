@@ -1,0 +1,34 @@
+syntax = "proto3";
+import "user.proto";
+import "item.proto";
+import "message.proto";
+import "category.proto";
+
+option java_multiple_files = true;
+option java_package = "dk.via.nbnp.databaseserver.protobuf";
+
+service ConversationService {
+  rpc createConversation(CreateConversationDTO) returns (Conversation);
+  rpc getConversationsByUser(SearchConversationDTO) returns (stream Conversation);
+  rpc getConversationById(SearchConversationDTO) returns (Conversation);
+  rpc deleteConversationById(SearchConversationDTO) returns (Conversation);
+}
+
+message SearchConversationDTO{
+  int64 id = 1;
+}
+
+message CreateConversationDTO{
+  int64 sellerId = 1;
+  int64 buyerId = 2;
+  int64 itemId = 3;
+}
+
+message Conversation{
+  int64 id = 1;
+  User seller = 2;
+  User buyer = 3;
+  Item item = 4;
+  LocalDateTime dateOfStart = 5;
+  repeated Message messages = 6;
+}

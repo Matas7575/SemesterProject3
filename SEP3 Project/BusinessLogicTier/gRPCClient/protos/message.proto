@@ -1,0 +1,30 @@
+syntax = "proto3";
+import "protos/user.proto";
+import "protos/item.proto";
+
+option csharp_namespace = "gRPCClient";
+
+service MessageService {
+  rpc createMessage(CreateMessageDTO) returns (Message);
+  rpc getMessageById(SearchMessageDTO) returns (Message);
+  rpc getMessagesByConversationId(SearchMessageDTO) returns (stream Message);
+  rpc deleteMessageById(SearchMessageDTO) returns (Message);
+}
+
+message SearchMessageDTO{
+  int64 id = 1;
+}
+
+message CreateMessageDTO{
+  string content = 1;
+  int64 senderId = 2;
+  int64 conversationId = 3;
+}
+
+message Message{
+  int64 id = 1;
+  string content = 2;
+  User sender = 3;
+  int64 conversationId = 4;
+  LocalDateTime dateTimeSent = 5;
+}

@@ -1,0 +1,447 @@
+﻿@page "/Marketplace/{itemNb:int?}/{searchString?}"
+@using Microsoft.AspNetCore.Components.Authorization
+@using Domain.Models
+@using HttpClients.ClientInterfaces
+@inject NavigationManager navMgr
+@inject IItemService itemService 
+@inject IImageService ImageService
+
+<CascadingAuthenticationState>
+<AuthorizeView>
+<Authorized>
+    @if (items is null && images is null)
+    {
+        <h5 style="color: white;">Loading...</h5>
+    }
+    else
+    {
+        <!-- PAGE -->
+        <!-- ------------------------------------------------- -->
+        <div class="page">
+            <!-- SIDEBAR -->
+            <!-- ------------------------------------------------- -->
+            <div class="sidebar">
+                <h2 class="sidebar__title">Items (@items.Count())</h2>
+
+                <div class="sidebar__category">
+                    <div class="sidebar__heading">Currency (@currency.Count())</div>
+                    <div class="sidebar__options">
+                        @foreach (var curr in currency)
+                        {
+                            <label class="check">
+                                <input type="checkbox" class="check__input" @onchange="eventArgs => { CheckBoxClicked(curr, eventArgs.Value); }">
+                                <span class="check__checkbox">
+                                    <svg width="24" height="25" viewBox="0 0 24 25" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M20 6.5L9 17.5L4 12.5" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </span>
+                                <p class="check__text">@curr</p>
+                            </label>
+                        }
+                    </div>
+                </div>
+
+                <div class="sidebar__category">
+                    <div class="sidebar__heading">Category (@category.Count())</div>
+                    <div class="sidebar__options">
+                        @foreach (var cat in category)
+                        {
+                            <label class="check">
+                                <input type="checkbox" class="check__input" @onchange="eventArgs => { CheckBoxClicked(cat, eventArgs.Value); }">
+                                <span class="check__checkbox">
+                                    <svg width="24" height="25" viewBox="0 0 24 25" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M20 6.5L9 17.5L4 12.5" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </span>
+                                <p class="check__text">@cat</p>
+                            </label>
+                        }
+                    </div>
+                </div>
+
+                <div class="sidebar__category">
+                    <div class="sidebar__heading">Price range</div>
+                    <p>Minimum price: @minPrice</p>
+                    <input value="@minPrice" type="range" class="form-range" min="0" max="@max" id="customRange2" @onchange="(ChangeEventArgs e) => { SlidersUpdate(double.Parse(e.Value.ToString()), maxPrice); }">
+                    <p>Maximum price: @maxPrice</p>
+                    <input value="@maxPrice" type="range" class="form-range" min="0" max="@max" id="customRange2" @onchange="(ChangeEventArgs e) => { SlidersUpdate(minPrice, double.Parse(e.Value.ToString())); }">
+                </div>
+            </div>
+
+            <!-- MAIN -->
+            <!-- ------------------------------------------------- -->
+            <div class="main">
+
+                <!-- PLANTS -->
+                <!-- ------------------------------------------------- -->
+                <h2 class="main__title">Items (@items.Count())</h2>
+                <!-- ITEMS -->
+                <!-- ------------------------------------------------- -->
+                <div class="items">
+                    @{
+                        if (AppliedFilter.Count == 0 && minPrice == 0 && maxPrice == max)
+                        {
+                            int upLimit = itemNb * 10;
+                            if (upLimit > items.Count)
+                                upLimit = items.Count;
+                            maxPage = items.Count / 10;
+                            if (items.Count % 10 != 0)
+                                maxPage++;
+                            for (int i = itemNb * 10 - 10; i < upLimit; i++)
+                            {
+                                <div class="item card">
+                                    <a href="ViewItem/@items[i].Id">
+                                        <div class="item__position">
+                                            @foreach (var image in images)
+                                            {
+                                                if (image.ItemId == items[i].Id)
+                                                {
+                                                    <img src="data:@image.contentType;base64,@image.base64data" alt="@items[i].Name" class="item__image item__image--hue">
+                                                    break;
+                                                }
+                                            }
+                                        </div>
+                                    </a>
+                                    <div style="color: black" class="item__detail">
+                                        <p>@items[i].Name</p>
+                                    </div>
+                                    <div style="color: black" class="item__detail">
+                                        <p>@items[i].Pricing @items[i].Currency</p>
+                                    </div>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            List<Item> filteredItems = new();
+                            foreach (var item in items)
+                            {
+                                if (minPrice <= item.Pricing && maxPrice >= item.Pricing && AppliedFilter.Count == 0)
+                                    filteredItems.Add(item);
+                                else if (minPrice <= item.Pricing && maxPrice >= item.Pricing && AppliedFilter.Contains(item.Category) || AppliedFilter.Contains(item.Currency))
+                                {
+                                    filteredItems.Add(item);
+                                }
+                            }
+                            int upLimit = itemNb * 10;
+                            if (upLimit > filteredItems.Count)
+                                upLimit = filteredItems.Count;
+                            maxPage = filteredItems.Count / 10;
+                            if (filteredItems.Count % 10 != 0)
+                                maxPage++;
+                            for (int i = itemNb * 10 - 10; i < upLimit; i++)
+                            {
+                                <div class="item card">
+                                    <a href="ViewItem/@filteredItems[i].Id">
+                                        <div class="item__position">
+                                            @foreach (var image in images)
+                                            {
+                                                if (image.ItemId == filteredItems[i].Id)
+                                                {
+                                                    <img src="data:@image.contentType;base64,@image.base64data" alt="@filteredItems[i].Name" class="item__image item__image--hue">
+                                                    break;
+                                                }
+                                            }
+                                        </div>
+                                    </a>
+                                    <div style="color: black" class="item__detail">
+                                        <p>@filteredItems[i].Name</p>
+                                    </div>
+                                    <div style="color: black" class="item__detail">
+                                        <p>@filteredItems[i].Pricing @filteredItems[i].Currency</p>
+                                    </div>
+                                </div>
+                            }
+                        }
+                    }
+                </div>
+                <!-- PAGINATION -->
+                <!-- ------------------------------------------------- -->
+                <div>
+                    <div class="pagination__page">Page @itemNb of @maxPage </div>
+                    <div class="pagination__links">
+                        @if (itemNb > 1)
+                        {
+                            <a href="/Marketplace/@(itemNb - 1)" class="pagination__link">
+                                <svg width="24" height="25" viewBox="0 0 24 25" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-right: var(--s)" stroke="black">
+                                    <path d="M19 12.5H5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <path d="M12 19.5L5 12.5L12 5.5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg> Previous Page
+                            </a>
+                        }
+                        else
+                        {
+                            <a class="pagination__link"> </a>
+                        }
+                        @if (itemNb < maxPage)
+                        {
+                            <a href="/Marketplace/@(itemNb + 1)" class="pagination__link">
+                                Next Page
+                                <svg width="24" height="25" viewBox="0 0 24 25" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-left: var(--s)" stroke="black">
+                                    <path d="M5 12.5H19" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <path d="M12 5.5L19 12.5L12 19.5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </a>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</Authorized>
+<NotAuthorized>
+    @if (items is null && images is null)
+    {
+        <h5 style="color: white;">Loading...</h5>
+    }
+    else
+    {
+        <!-- PAGE -->
+        <!-- ------------------------------------------------- -->
+        <div class="page">
+            <!-- SIDEBAR -->
+            <!-- ------------------------------------------------- -->
+            <div class="sidebar">
+                <h2 class="sidebar__title">Items (@items.Count())</h2>
+
+                <div class="sidebar__category">
+                    <div class="sidebar__heading">Currency (@currency.Count())</div>
+                    <div class="sidebar__options">
+                        @foreach (var curr in currency)
+                        {
+                            <label class="check">
+                                <input type="checkbox" class="check__input" @onchange="eventArgs => { CheckBoxClicked(curr, eventArgs.Value); }">
+                                <span class="check__checkbox">
+                                    <svg width="24" height="25" viewBox="0 0 24 25" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M20 6.5L9 17.5L4 12.5" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </span>
+                                <p class="check__text">@curr</p>
+                            </label>
+                        }
+                    </div>
+                </div>
+
+                <div class="sidebar__category">
+                    <div class="sidebar__heading">Category (@category.Count())</div>
+                    <div class="sidebar__options">
+                        @foreach (var cat in category)
+                        {
+                            <label class="check">
+                                <input type="checkbox" class="check__input" @onchange="eventArgs => { CheckBoxClicked(cat, eventArgs.Value); }">
+                                <span class="check__checkbox">
+                                    <svg width="24" height="25" viewBox="0 0 24 25" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M20 6.5L9 17.5L4 12.5" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </span>
+                                <p class="check__text">@cat</p>
+                            </label>
+                        }
+                    </div>
+                </div>
+
+                <div class="sidebar__category" style="margin-bottom: 100px">
+                    <div class="sidebar__heading">Price range</div>
+                    <p>Minimum price: @minPrice</p>
+                    <input value="@minPrice" type="range" class="form-range" min="0" max="@max" id="customRange2" @onchange="(ChangeEventArgs e) => { SlidersUpdate(double.Parse(e.Value.ToString()), maxPrice); }">
+                    <p>Maximum price: @maxPrice</p>
+                    <input value="@maxPrice" type="range" class="form-range" min="0" max="@max" id="customRange2" @onchange="(ChangeEventArgs e) => { SlidersUpdate(minPrice, double.Parse(e.Value.ToString())); }">
+                </div>
+            </div>
+
+            <!-- MAIN -->
+            <!-- ------------------------------------------------- -->
+            <div class="main">
+
+                <!-- PLANTS -->
+                <!-- ------------------------------------------------- -->
+                <h2 class="main__title">Items (@items.Count())</h2>
+                <!-- ITEMS -->
+                <!-- ------------------------------------------------- -->
+                <div class="items">
+                    @{
+                        if (AppliedFilter.Count == 0 && minPrice == 0 && maxPrice == max)
+                        {
+                            int upLimit = itemNb * 10;
+                            if (upLimit > items.Count)
+                                upLimit = items.Count;
+                            maxPage = items.Count / 10;
+                            if (items.Count % 10 != 0)
+                                maxPage++;
+                            for (int i = itemNb * 10 - 10; i < upLimit; i++)
+                            {
+                                <div class="item card">
+                                    <a href="ViewItem/@items[i].Id">
+                                        <div class="item__position">
+                                            @foreach (var image in images)
+                                            {
+                                                if (image.ItemId == items[i].Id)
+                                                {
+                                                    <img src="data:@image.contentType;base64,@image.base64data" alt="@items[i].Name" class="item__image item__image--hue">
+                                                    break;
+                                                }
+                                            }
+                                        </div>
+                                    </a>
+                                    <div style="color: black" class="item__detail">
+                                        <p>@items[i].Name</p>
+                                    </div>
+                                    <div style="color: black" class="item__detail">
+                                        <p>@items[i].Pricing @items[i].Currency</p>
+                                    </div>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            List<Item> filteredItems = new();
+                            foreach (var item in items)
+                            {
+                                if (minPrice <= item.Pricing && maxPrice >= item.Pricing && AppliedFilter.Count == 0)
+                                    filteredItems.Add(item);
+                                else if (minPrice <= item.Pricing && maxPrice >= item.Pricing && AppliedFilter.Contains(item.Category) || AppliedFilter.Contains(item.Currency))
+                                {
+                                    filteredItems.Add(item);
+                                }
+                            }
+                            int upLimit = itemNb * 10;
+                            if (upLimit > filteredItems.Count)
+                                upLimit = filteredItems.Count;
+                            maxPage = filteredItems.Count / 10;
+                            if (filteredItems.Count % 10 != 0)
+                                maxPage++;
+                            for (int i = itemNb * 10 - 10; i < upLimit; i++)
+                            {
+                                <div class="item card">
+                                    <a href="ViewItem/@filteredItems[i].Id">
+                                        <div class="item__position">
+                                            @foreach (var image in images)
+                                            {
+                                                if (image.ItemId == filteredItems[i].Id)
+                                                {
+                                                    <img src="data:@image.contentType;base64,@image.base64data" alt="@filteredItems[i].Name" class="item__image item__image--hue">
+                                                    break;
+                                                }
+                                            }
+                                        </div>
+                                    </a>
+                                    <div style="color: black" class="item__detail">
+                                        <p>@filteredItems[i].Name</p>
+                                    </div>
+                                    <div style="color: black" class="item__detail">
+                                        <p>@filteredItems[i].Pricing @filteredItems[i].Currency</p>
+                                    </div>
+                                </div>
+                            }
+                        }
+                    }
+                </div>
+                <!-- PAGINATION -->
+                <!-- ------------------------------------------------- -->
+                <div>
+                    <div class="pagination__page">Page @itemNb of @maxPage </div>
+                    <div class="pagination__links">
+                        @if (itemNb > 1)
+                        {
+                            <a href="/Marketplace/@(itemNb - 1)" class="pagination__link">
+                                <svg width="24" height="25" viewBox="0 0 24 25" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-right: var(--s)" stroke="black">
+                                    <path d="M19 12.5H5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <path d="M12 19.5L5 12.5L12 5.5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg> Previous Page
+                            </a>
+                        }
+                        else
+                        {
+                            <a class="pagination__link"> </a>
+                        }
+                        @if (itemNb < maxPage)
+                        {
+                            <a href="/Marketplace/@(itemNb + 1)" class="pagination__link">
+                                Next Page
+                                <svg width="24" height="25" viewBox="0 0 24 25" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-left: var(--s)" stroke="black">
+                                    <path d="M5 12.5H19" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <path d="M12 5.5L19 12.5L12 19.5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </a>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</NotAuthorized>
+</AuthorizeView>
+</CascadingAuthenticationState>
+
+
+@code {
+
+    [Parameter]
+    public int itemNb { get; set; }
+
+    [Parameter]
+    public string searchString { get; set; }
+
+    public double minPrice = 0, maxPrice = 0, max = 0;
+    public int maxPage;
+    private List<Item> items = new();
+    private List<Image> images = new();
+    private List<string> category = new();
+    private List<string> currency = new();
+    private List<string> AppliedFilter = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (string.IsNullOrEmpty(searchString))
+            items = await itemService.GetAllItems();
+        else
+            items = await itemService.GetItems(searchString, "", 0, 0, 0, false, "");
+        foreach (Item item in items)
+        {
+            if (max < item.Pricing)
+                max = item.Pricing;
+            if (!category.Contains(item.Category))
+            {
+                category.Add(item.Category);
+            }
+            if (!currency.Contains(item.Currency))
+            {
+                currency.Add(item.Currency);
+            }
+            images.AddRange(await ImageService.GetImagesByItemId(item.Id));
+        }
+        maxPrice = max;
+    }
+
+    private void ViewItem(int id)
+    {
+        navMgr.NavigateTo($"/ViewItem/{id}");
+    }
+
+    public void CheckBoxClicked(string filter, object checkedValue)
+    {
+        if ((bool)checkedValue)
+        {
+            if (!AppliedFilter.Contains(filter))
+            {
+                AppliedFilter.Add(filter);
+            }
+        }
+        else
+        {
+            if (AppliedFilter.Contains(filter))
+            {
+                AppliedFilter.Remove(filter);
+            }
+        }
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void SlidersUpdate(double minPrice, double maxPrice)
+    {
+        this.minPrice = minPrice;
+        this.maxPrice = maxPrice;
+        InvokeAsync(StateHasChanged);
+    }
+
+}
